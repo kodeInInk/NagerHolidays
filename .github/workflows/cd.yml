@@ -1,5 +1,6 @@
 name: CD
 #https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images
+on:
   push:
     branches: [main]
 
