@@ -1,0 +1,34 @@
+name: CD
+#https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images
+  push:
+    branches: [main]
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/nagerholidays-api
+
+jobs:
+  test:
+    name: Run CI
+    uses: ./.github/workflows/ci.yml
+
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Loging into GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build
+        run: docker build -t ${{ env.IMAGE }}:latest -t ${{ env.IMAGE }}:${{ github.sha }} ./NagerHolidays
+
+      - name: Push
+        run: docker push ${{ env.IMAGE }} --all-tags

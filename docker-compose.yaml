@@ -1,0 +1,38 @@
+﻿services:
+  nagerholidaydb:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y" #agree to Microsoft's End User License Agreement
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-P@ssw0rd123!}
+      MSSQL_PID: Developer #for current purposes, using Developer edition for development and testing, however once in production, this should be changed(Standard/Enterprise)
+    ports:
+      - "1434:1433"
+    volumes:
+      - mssqldata:/var/opt/mssql
+    # sometimes SQL Server can take a while to start up,and then the api will try to connect before it's ready:')
+    # https://gist.github.com/belgattitude/9979e5501d72ffa90c9460597dee8dca
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -No
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  nagerholidayapi:
+    build:
+      context: ./NagerHolidays
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      nagerholidaydb:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Server=nagerholidaydb,1433;Database=HolidayDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-P@ssw0rd123!};TrustServerCertificate=True;Encrypt=False;
+    ports:
+      - "8080:8080"
+
+volumes:
+  mssqldata:
